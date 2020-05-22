@@ -13,6 +13,8 @@ with open('pins.csv') as f:
     for key, pin in enumerate(f):
         if key == 0:
             continue
+        if not pin.strip():
+            continue
         pins.append(pin.strip())
 
 
@@ -47,7 +49,8 @@ def get_properties(ids):
 def get_stats(properties):
     rent_properties = [i for i in properties if i['letAgreed']
                        == False if i["imageUrl"] if "Shared" in i["title"]]
-    let_properties = [i for i in properties if i['letAgreed'] == True if "Shared" in i["title"]]
+    let_properties = [i for i in properties if i['letAgreed']
+                      == True if "Shared" in i["title"]]
 
     rent_count = len(rent_properties)
     let_count = len(let_properties)
@@ -57,7 +60,8 @@ def get_stats(properties):
     let_percentage = round((let_count/total_count)*100,
                            2) if let_count != 0 else 0
     let_total_price = reduce(lambda a, b: a + b['rentPerMonth'], properties, 0)
-    let_average_price = let_total_price/let_count if let_count != 0 else 0
+    let_average_price = round(
+        let_total_price/let_count, 2) if let_count != 0 else 0
 
     return (rent_count, let_count, let_percentage, let_average_price)
 
@@ -78,14 +82,16 @@ def task_properties(pin):
         r = requests.get(url)
     except Exception as e:
         print('Request failed:', e)
+        ws.write_row(row, 0, (pin, ) + (0,)*4)
+        return (pin, False)
 
     ids_match = re.search(
         r"PROPERTYIDS = \[(.*?)\];", r.text, re.MULTILINE | re.DOTALL)
 
     if not ids_match:
+        ws.write_row(row, 0, (pin, ) + (0,)*4)
         print('%s: No property ids founds on: %s' % (pin, url))
-        ws.write_row(row, 0, (pin, ) + (0,)*5)
-        return pin
+        return (pin, False)
 
     ids_raw = ids_match.group(1).split(',')
     ids = clean(ids_raw)
@@ -97,24 +103,20 @@ def task_properties(pin):
         for properties_chunk in executor.map(get_properties, chunks(ids, 50)):
             properties += properties_chunk
 
-    # while ids:
-    #     properties += get_properties(ids[:50])
-    #     ids = ids[50:]
-
     stats = get_stats(properties)
     ws.write_row(row, 0, (pin, ) + stats)
-    return pin
+    return (pin, True)
 
 
 if __name__ == "__main__":
     try:
         # multi thread over all pins
         with PoolExecutor(max_workers=CONCURRENCY) as executor:
-            for pin in executor.map(task_properties, pins):
-                print('%s: done!' % pin)
+            for (pin, status) in executor.map(task_properties, pins):
+                print('%s: %s!' % (pin, 'done' if status == True else 'failed'))
 
         wb.close()
     except Exception as e:
-        # save existing data on any erro
+        # save existing data on any error
         wb.close()
         print(e)
