@@ -43,14 +43,16 @@ def get_properties(ids):
     return []
 
 
-# gather stats
+# gather stats of shared properties with images
 def get_stats(properties):
-    rent_properties = [i for i in properties if i['letAgreed'] == False]
-    let_properties = [i for i in properties if i['letAgreed'] == True]
+    rent_properties = [i for i in properties if i['letAgreed']
+                       == False if i["imageUrl"] if "Shared" in i["title"]]
+    let_properties = [i for i in properties if i['letAgreed'] == True if "Shared" in i["title"]]
 
-    total_count = len(properties)
     rent_count = len(rent_properties)
     let_count = len(let_properties)
+    # not the same as len(properties)
+    total_count = rent_count + let_count
 
     let_percentage = round((let_count/total_count)*100,
                            2) if let_count != 0 else 0
