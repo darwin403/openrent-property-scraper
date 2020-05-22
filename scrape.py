@@ -59,7 +59,8 @@ def get_stats(properties):
 
     let_percentage = round((let_count/total_count)*100,
                            2) if let_count != 0 else 0
-    let_total_price = reduce(lambda a, b: a + b['rentPerMonth'], properties, 0)
+    let_total_price = round(
+        reduce(lambda a, b: a + b['rentPerMonth'], let_properties, 0), 2)
     let_average_price = round(
         let_total_price/let_count, 2) if let_count != 0 else 0
 
