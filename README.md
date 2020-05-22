@@ -1,0 +1,1 @@
+- The api restricts retrviving 50 ids at a time.
